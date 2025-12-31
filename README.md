@@ -46,6 +46,8 @@ This applet is meant as a companion tool for UMR STL's ["DOC-STL" corpus project
 
 ## Quick Start
 
+[![**Video tutorial**](https://raw.githubusercontent.com/abalvet/OpenTranscriber/OpenTranscriber_thumbnail.png)](https://raw.githubusercontent.com/abalvet/OpenTranscriber/OpenTranscriber-tutorial.mp4)
+
 ### Option 1: Direct Use (No Server)
 1. Download or clone the repository
 2. Open `index.html` in a modern browser (Chrome, Firefox, Safari), or use the applet from Github/Gitlab pages
