@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenTranscriber</title>
+    
+    <!-- WaveSurfer.js and plugins -->
+    <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/spectrogram.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/timeline.min.js"></script>
+    
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="logo-area">
+            <div class="logo-icon">OT</div>
+            <div>
+                <div class="title">OpenTranscriber</div>
+                <div class="subtitle">v7.0 — Multi-speaker transcription tool</div>
+            </div>
+        </div>
+        
+        <div class="toolbar">
+            <label class="btn btn-primary" for="audioFileInput">
+                📁 Load audio
+                <input type="file" id="audioFileInput" accept="audio/*" style="display:none">
+            </label>
+            
+            <button class="btn" id="importBtn">📥 Import</button>
+            <input type="file" id="importFileInput" accept=".json" style="display:none">
+            
+            <button class="btn" id="saveBtn">💾 Save</button>
+            
+            <div class="separator"></div>
+            
+            <button class="btn" id="undoBtn" disabled title="Undo (Ctrl+Z)">↶ Undo</button>
+            <button class="btn" id="redoBtn" disabled title="Redo (Ctrl+Y)">↷ Redo</button>
+            
+            <div class="separator"></div>
+            
+            <button class="btn" id="autoSegBtn" disabled>⚡ Auto-segment</button>
+            <button class="btn" id="exportBtn" disabled>📤 Export</button>
+            
+            <div class="separator"></div>
+            
+            <button class="btn btn-help" id="helpBtn" title="Help (?)">❓</button>
+        </div>
+    </header>
+
+    <!-- Main content -->
+    <main>
+        <!-- Master Track -->
+        <section class="master-track">
+            <div class="track-header">
+                <h2>Master Track</h2>
+                <div class="track-info">
+                    <span id="currentTime">00:00</span> / <span id="totalDuration">00:00</span>
+                </div>
+            </div>
+            
+            <!-- Speaker filter -->
+            <div class="speaker-filter">
+                <span class="filter-label">Show:</span>
+                <label class="radio-pill">
+                    <input type="radio" name="speakerFilter" value="all" checked>
+                    <span>All</span>
+                </label>
+                <div id="speakerRadioButtons">
+                    <!-- Radio buttons generated dynamically -->
+                </div>
+            </div>
+            
+            <div id="waveformContainer">
+                <div id="waveform"></div>
+                <div id="spectrogram"></div>
+                <div id="timeline"></div>
+            </div>
+            
+            <!-- Playback controls -->
+            <div class="playback-controls">
+                <button class="ctrl-btn" id="playBtn" title="Play/Pause (Space)">▶</button>
+                <button class="ctrl-btn" id="stopBtn" title="Stop">⏹</button>
+                
+                <div class="control-group">
+                    <label>Speed:</label>
+                    <select id="playbackRate">
+                        <option value="0.5">0.5×</option>
+                        <option value="0.75">0.75×</option>
+                        <option value="1" selected>1×</option>
+                        <option value="1.25">1.25×</option>
+                        <option value="1.5">1.5×</option>
+                        <option value="2">2×</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Volume:</label>
+                    <input type="range" id="volumeSlider" min="0" max="100" value="80">
+                    <span id="volumeValue">80%</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Zoom:</label>
+                    <input type="range" id="zoomSlider" min="10" max="500" value="50" step="10">
+                    <span id="zoomValue">50</span>
+                </div>
+                
+                <div class="separator"></div>
+                
+                <!-- Audio filters -->
+                <div class="control-group">
+                    <label>Highpass:</label>
+                    <input type="range" id="highpassSlider" min="0" max="500" value="0" step="10">
+                    <span id="highpassValue">0 Hz</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Lowpass:</label>
+                    <input type="range" id="lowpassSlider" min="1000" max="20000" value="20000" step="100">
+                    <span id="lowpassValue">20k Hz</span>
+                </div>
+                
+                <button class="btn btn-sm" id="resetFiltersBtn" title="Reset filters">🔄</button>
+            </div>
+        </section>
+
+        <!-- Speaker tracks container -->
+        <div id="speakersContainer">
+            <!-- Tracks added dynamically -->
+        </div>
+        
+        <button class="btn btn-add-speaker" id="addSpeakerBtn">➕ Add speaker</button>
+
+        <!-- Edition panel -->
+        <div id="editionPanel" class="edition-panel hidden">
+            <div class="edition-header">
+                <strong>Selected segment</strong>
+                <button class="btn-close" id="closeEditionBtn">✖</button>
+            </div>
+            
+            <div class="edition-content">
+                <div class="info-row">
+                    <span id="segmentTimeInfo">--</span>
+                </div>
+                
+                <div class="form-row">
+                    <label>Speaker:</label>
+                    <select id="speakerSelect">
+                        <option value="1">Speaker 1</option>
+                        <option value="2">Speaker 2</option>
+                        <option value="3">Speaker 3</option>
+                    </select>
+                    <small>Page Up/Down</small>
+                </div>
+                
+                <div class="form-row">
+                    <label>Transcription:</label>
+                    <input type="text" id="transcriptionInput" placeholder="Type transcription...">
+                    <small>Enter to save</small>
+                </div>
+                
+                <div class="action-row">
+                    <button class="btn btn-sm btn-primary" id="playSegmentBtn">▶ Play</button>
+                    <label class="toggle-loop">
+                        <input type="checkbox" id="loopToggle" checked>
+                        <span>🔁 Loop</span>
+                    </label>
+                    <button class="btn btn-sm btn-danger" id="deleteSegmentBtn">🗑 Delete</button>
+                    <button class="btn btn-sm" id="nextSegmentBtn">Next →</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Export Modal -->
+    <div id="exportModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📤 Export</h2>
+                <button class="close-btn">✖</button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Format:</label>
+                    <select id="exportFormat">
+                        <option value="eaf">ELAN (.eaf)</option>
+                        <option value="srt">Subtitles (.srt)</option>
+                        <option value="textgrid">Praat TextGrid</option>
+                        <option value="json">JSON</option>
+                        <option value="csv">CSV</option>
+                    </select>
+                </div>
+                
+                <div class="export-stats">
+                    <p><strong>Statistics:</strong></p>
+                    <ul>
+                        <li>Segments: <span id="exportSegmentCount">0</span></li>
+                        <li>Transcribed: <span id="exportTranscribedCount">0</span></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="confirmExportBtn">✔ Export</button>
+                <button class="btn" id="cancelExportBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auto-segmentation Modal -->
+    <div id="autoSegModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2>⚡ Auto-segmentation</h2>
+                <button class="close-btn">✖</button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label><strong>Segmentation strategy:</strong></label>
+                    <select id="segmentationStrategy">
+                        <option value="silence" selected>Silence detection (simple)</option>
+                        <option value="silence_f0">Silence + F0 changes (medium)</option>
+                        <option value="vad_clustering">VAD + Spectral clustering (advanced)</option>
+                        <option value="sliding_window">Sliding window + ML (experimental)</option>
+                    </select>
+                    <small style="display:block; margin-top: 4px; color: #718096;">
+                        Silence detection: segments based on pauses (fast, reliable)
+                    </small>
+                </div>
+                
+                <div style="border-top: 1px solid #e2e8f0; margin: 16px 0; padding-top: 16px;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 0.95rem;">Basic parameters</h3>
+                </div>
+                
+                <div class="form-group">
+                    <label>Silence threshold:</label>
+                    <input type="range" id="silenceThreshold" min="0.01" max="0.1" step="0.01" value="0.02">
+                    <span id="silenceThresholdValue">0.02</span>
+                </div>
+                
+                <div class="form-group">
+                    <label>Minimum silence duration (s):</label>
+                    <input type="range" id="minSilenceDuration" min="0.1" max="1" step="0.1" value="0.3">
+                    <span id="minSilenceDurationValue">0.3</span>
+                </div>
+                
+                <div class="form-group">
+                    <label>Minimum segment duration (s):</label>
+                    <input type="range" id="minSegmentDuration" min="0.5" max="3" step="0.1" value="1.0">
+                    <span id="minSegmentDurationValue">1.0</span>
+                </div>
+                
+                <div id="advancedParams" style="display:none; border-top: 1px solid #e2e8f0; margin-top: 16px; padding-top: 16px;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 0.95rem;">Advanced parameters (F0)</h3>
+                    
+                    <div class="form-group">
+                        <label>Number of speakers:</label>
+                        <select id="numSpeakers">
+                            <option value="2" selected>2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>F0 minimum (Hz):</label>
+                        <input type="range" id="f0Min" min="50" max="150" step="5" value="75">
+                        <span id="f0MinValue">75</span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>F0 maximum (Hz):</label>
+                        <input type="range" id="f0Max" min="200" max="500" step="10" value="300">
+                        <span id="f0MaxValue">300</span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>F0 confidence threshold:</label>
+                        <input type="range" id="f0Confidence" min="0.1" max="0.6" step="0.05" value="0.25">
+                        <span id="f0ConfidenceValue">0.25</span>
+                    </div>
+                </div>
+                
+                <div id="previewResults" style="display:none; margin-top: 16px; padding: 12px; background: #f7fafc; border-radius: 4px;">
+                    <p style="margin: 0;"><strong>Preview:</strong> <span id="previewSegmentCount">0</span> segments detected</p>
+                </div>
+                
+                <div id="segmentationProgress" style="display:none; margin-top: 16px;">
+                    <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                        <div id="segmentationProgressFill" style="height: 100%; background: #4299e1; width: 0%; transition: width 0.3s;"></div>
+                    </div>
+                    <p id="segmentationProgressText" style="margin: 8px 0 0 0; font-size: 0.85rem; color: #718096;">Analyzing...</p>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn" id="previewSegBtn">👁 Preview</button>
+                <button class="btn btn-primary" id="applySegBtn">✔ Apply</button>
+                <button class="btn" id="cancelSegBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Overlay -->
+    <div id="helpOverlay" class="help-overlay">
+        <div class="help-content">
+            <h2>⌨️ Keyboard shortcuts</h2>
+            <button class="btn-close-help">✖</button>
+            
+            <div class="help-grid">
+                <div class="help-section">
+                    <h3>Playback</h3>
+                    <kbd>Space</kbd> Play/Pause<br>
+                    <kbd>←</kbd> <kbd>→</kbd> ±5 sec<br>
+                    <kbd>Home</kbd> Go to start<br>
+                    <kbd>End</kbd> Go to end
+                </div>
+                
+                <div class="help-section">
+                    <h3>Segmentation</h3>
+                    <kbd>S</kbd> Mark start<br>
+                    <kbd>S</kbd> (again) Mark end<br>
+                    <strong>Mouse drag</strong> to create segment<br>
+                    Double-click segment to edit
+                </div>
+                
+                <div class="help-section">
+                    <h3>Editing</h3>
+                    <kbd>Enter</kbd> Save transcription<br>
+                    <kbd>Page Up</kbd> Previous speaker<br>
+                    <kbd>Page Down</kbd> Next speaker<br>
+                    <kbd>Delete</kbd> Delete segment
+                </div>
+                
+                <div class="help-section">
+                    <h3>Navigation</h3>
+                    <kbd>N</kbd> Next segment<br>
+                    <kbd>P</kbd> Previous segment<br>
+                    <kbd>L</kbd> Toggle loop<br>
+                    <kbd>Escape</kbd> Deselect
+                </div>
+                
+                <div class="help-section">
+                    <h3>History</h3>
+                    <kbd>Ctrl</kbd>+<kbd>Z</kbd> Undo<br>
+                    <kbd>Ctrl</kbd>+<kbd>Y</kbd> Redo
+                </div>
+            </div>
+            
+            <div class="help-section" style="margin-top: 20px;">
+                <h3>Audio filters</h3>
+                <p>Use highpass and lowpass filters to isolate vocal frequencies for each speaker. 
+                Highpass cuts low frequencies (deep voices), lowpass cuts high frequencies (high-pitched voices).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Main script -->
+    <script src="app.js"></script>
+</body>
+</html>
