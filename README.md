@@ -51,12 +51,12 @@ This applet is meant as a companion tool for UMR STL's ["DOC-STL" corpus project
 ## Quick Start
 
 [![**Video tutorial (in French, subtitles available)**](OpenTranscriber-thumbnail.png)](http://www.youtube.com/watch?v=mrHS408znaE&t=5s)
-### Option 1: Direct Use (No Server)
+### Option 1: Direct Use (No Server, works fine so far for small-ish recordings)
 1. Download or clone the repository
 2. Open `index.html` in a modern browser (Chrome, Firefox, Safari), or use the applet from Github/Gitlab pages
 3. Load an audio file and start transcribing
 
-### Option 2: Local Server (Recommended)
+### Option 2: Local Server (Recommended, but don't take my word for it)
 ```bash
 cd opentranscriber
 python3 -m http.server 8000
