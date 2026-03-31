@@ -20,6 +20,10 @@ This applet is meant as a companion tool for UMR STL's ["DOC-STL" corpus project
   - Mouse drag segment selection
   - Automatic silence detection
   - F0-based speaker clustering
+- **Saving, exporting and importing annotation files**:
+  - annotations can be saved in JSon
+  - annotations can be exported in different formats: srt, Textgrid (Praat), eaf (Elan), csv (for statistical explorations)
+  - unfinished annotations can be exported in order to resume transcribing or send your file to someone else
 
 ### Editing & Navigation
 
